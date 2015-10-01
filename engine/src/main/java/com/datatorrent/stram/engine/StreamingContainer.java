@@ -18,7 +18,6 @@
  */
 package com.datatorrent.stram.engine;
 
-import java.io.File;
 import java.io.IOException;
 import java.lang.Thread.State;
 import java.lang.management.GarbageCollectorMXBean;
@@ -34,13 +33,10 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 
-import net.engio.mbassy.bus.MBassador;
-import net.engio.mbassy.bus.config.BusConfiguration;
-
-import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.metrics2.lib.DefaultMetricsSystem;
@@ -51,6 +47,9 @@ import org.apache.hadoop.security.token.Token;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.log4j.DTLoggerFactory;
 import org.apache.log4j.LogManager;
+
+import net.engio.mbassy.bus.MBassador;
+import net.engio.mbassy.bus.config.BusConfiguration;
 
 import com.datatorrent.api.*;
 import com.datatorrent.api.DAG.Locality;
@@ -112,6 +111,7 @@ public class StreamingContainer extends YarnContainerMain
   private volatile boolean exitHeartbeatLoop = false;
   private final Object heartbeatTrigger = new Object();
   public static DefaultEventLoop eventloop;
+  public static DefaultEventLoop bsEventloop;
   /**
    * List of listeners interested in listening into the status change of the nodes.
    */
@@ -131,6 +131,7 @@ public class StreamingContainer extends YarnContainerMain
   static {
     try {
       eventloop = DefaultEventLoop.createEventLoop("ProcessWideEventLoop");
+      bsEventloop = DefaultEventLoop.createEventLoop("BuffServeEventLoop");
     }
     catch (IOException io) {
       throw new RuntimeException(io);
@@ -171,6 +172,7 @@ public class StreamingContainer extends YarnContainerMain
 
     try {
       if (ctx.deployBufferServer) {
+        bsEventloop.start();
         eventloop.start();
 
         int bufferServerRAM = ctx.getValue(ContainerContext.BUFFER_SERVER_MB);
@@ -194,7 +196,7 @@ public class StreamingContainer extends YarnContainerMain
         if (ctx.getValue(Context.DAGContext.BUFFER_SPOOLING)) {
           bufferServer.setSpoolStorage(new DiskStorage());
         }
-        SocketAddress bindAddr = bufferServer.run(eventloop);
+        SocketAddress bindAddr = bufferServer.run(bsEventloop);
         logger.debug("Buffer server started: {}", bindAddr);
         this.bufferServerAddress = NetUtils.getConnectAddress(((InetSocketAddress) bindAddr));
       }
@@ -572,8 +574,10 @@ public class StreamingContainer extends YarnContainerMain
     }
 
     if (bufferServer != null) {
-      eventloop.stop(bufferServer);
+      //eventloop.stop(bufferServer);
       eventloop.stop();
+      bsEventloop.stop(bufferServer);
+      bsEventloop.stop();
     }
 
     gens.clear();
@@ -621,7 +625,7 @@ public class StreamingContainer extends YarnContainerMain
       if (this.bufferServerAddress != null) {
         msg.bufferServerHost = this.bufferServerAddress.getHostName();
         msg.bufferServerPort = this.bufferServerAddress.getPort();
-        if (bufferServer != null && !eventloop.isActive()) {
+        if (bufferServer != null && !bsEventloop.isActive()) {
           logger.warn("Requesting restart due to terminated event loop");
           msg.restartRequested = true;
         }
