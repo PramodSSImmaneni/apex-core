@@ -30,21 +30,6 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import javax.annotation.Nullable;
 
-import com.datatorrent.netlet.util.DTThrowable;
-import com.esotericsoftware.kryo.KryoException;
-import com.esotericsoftware.kryo.io.Input;
-import com.esotericsoftware.kryo.io.Output;
-import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Predicate;
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
-
-import net.engio.mbassy.bus.MBassador;
-import net.engio.mbassy.bus.config.BusConfiguration;
-
 import org.codehaus.jettison.json.JSONArray;
 import org.codehaus.jettison.json.JSONException;
 import org.codehaus.jettison.json.JSONObject;
@@ -58,11 +43,7 @@ import org.apache.commons.lang3.builder.ToStringStyle;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.commons.lang3.mutable.MutableLong;
 import org.apache.hadoop.conf.Configuration;
-import org.apache.hadoop.fs.CreateFlag;
-import org.apache.hadoop.fs.FSDataOutputStream;
-import org.apache.hadoop.fs.FileContext;
-import org.apache.hadoop.fs.Options;
-import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.*;
 import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.hadoop.yarn.api.ApplicationConstants;
@@ -70,6 +51,20 @@ import org.apache.hadoop.yarn.conf.YarnConfiguration;
 import org.apache.hadoop.yarn.util.Clock;
 import org.apache.hadoop.yarn.util.SystemClock;
 import org.apache.hadoop.yarn.webapp.NotFoundException;
+
+import com.esotericsoftware.kryo.KryoException;
+import com.esotericsoftware.kryo.io.Input;
+import com.esotericsoftware.kryo.io.Output;
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Predicate;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
+
+import net.engio.mbassy.bus.MBassador;
+import net.engio.mbassy.bus.config.BusConfiguration;
 
 import com.datatorrent.api.*;
 import com.datatorrent.api.Context.OperatorContext;
@@ -85,6 +80,7 @@ import com.datatorrent.common.util.AsyncFSStorageAgent;
 import com.datatorrent.common.util.FSStorageAgent;
 import com.datatorrent.common.util.NumberAggregate;
 import com.datatorrent.common.util.Pair;
+import com.datatorrent.netlet.util.DTThrowable;
 import com.datatorrent.stram.Journal.Recoverable;
 import com.datatorrent.stram.StreamingContainerAgent.ContainerStartRequest;
 import com.datatorrent.stram.api.*;
@@ -1967,6 +1963,50 @@ public class StreamingContainerManager implements PlanContext
     }
 
     ctx.visited.add(operator);
+  }
+
+  public void updateRecoveryCheckpoints(PTOperator operator, UpdateCheckpointsContext ctx, IdempotencyContext idempotencyContext)
+  {
+    // DFS downstream operators
+    for (PTOperator.PTOutput out : operator.getOutputs()) {
+      for (PTOperator.PTInput sink : out.sinks) {
+        PTOperator sinkOperator = sink.target;
+        if (!ctx.visited.contains(sinkOperator)) {
+          // downstream traversal
+          updateRecoveryCheckpoints(sinkOperator, ctx, idempotencyContext);
+        }
+
+        Checkpoint sinkRecoveryCheckpoint = sinkOperator.getRecoveryCheckpoint();
+        Integer lastIndex = idempotencyContext.lastCheckpoints.get(operator.getId());
+
+        Checkpoint recoveryCheckpoint = operator.getRecentCheckpoint();
+        if (lastIndex != null) {
+          lastIndex++;
+          recoveryCheckpoint = operator.checkpoints.get(operator.checkpoints.size() - lastIndex);
+        } else {
+          lastIndex = 1;
+        }
+        if (recoveryCheckpoint.getWindowId() > sinkRecoveryCheckpoint.getWindowId());
+
+        // recovery window id cannot move backwards
+        // when dynamically adding new operators
+        if (sinkOperator.getRecoveryCheckpoint().windowId >= operator.getRecoveryCheckpoint().windowId) {
+          maxCheckpoint = Math.min(maxCheckpoint, sinkOperator.getRecoveryCheckpoint().windowId);
+        }
+
+        if (ctx.blocked.contains(sinkOperator)) {
+          if (sinkOperator.stats.getCurrentWindowId() == operator.stats.getCurrentWindowId()) {
+            // downstream operator is blocked by this operator
+            ctx.blocked.remove(sinkOperator);
+          }
+        }
+      }
+    }
+
+  }
+
+  private class IdempotencyContext {
+    Map<Integer, Integer> lastCheckpoints = new HashMap<Integer, Integer>();
   }
 
   public long windowIdToMillis(long windowId)
