@@ -31,7 +31,7 @@ import com.datatorrent.api.Operator.ShutdownException;
 import com.datatorrent.api.Sink;
 import com.datatorrent.netlet.util.DTThrowable;
 import com.datatorrent.stram.api.ConfigurationChange;
-import com.datatorrent.stram.api.ConfigurationChangeBatch;
+import com.datatorrent.stram.api.ModifyConfiguration;
 import com.datatorrent.stram.api.PropertyChange;
 import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol.ContainerStats;
 import com.datatorrent.stram.tuple.ModifyConfigurationTuple;
@@ -51,7 +51,7 @@ public class InputNode extends Node<InputOperator>
   //This variable is a performance optimization since we want to avoid doing synchronized unless we have to
   private boolean updatedConfigurationChanges = false;
   private final Object configurationChangeLock = new Object();
-  private final ConfigurationChangeBatch configurationChangeBatch = new ConfigurationChangeBatch();
+  private ModifyConfiguration modifyConfiguration = new ModifyConfiguration();
 
   public InputNode(InputOperator operator, OperatorContext context)
   {
@@ -61,7 +61,19 @@ public class InputNode extends Node<InputOperator>
   public void addConfigurationChange(String operatorName, ConfigurationChange configurationChange)
   {
     synchronized(configurationChangeLock) {
-      configurationChangeBatch.add(operatorName, configurationChange);
+      modifyConfiguration.add(operatorName, configurationChange);
+    }
+  }
+
+  // Collect all configuration change requests that are received
+  public void addConfigurationChange(ModifyConfiguration modifyConfiguration)
+  {
+    synchronized(configurationChangeLock) {
+      if (modifyConfiguration.isEmpty()) {
+        this.modifyConfiguration = modifyConfiguration;
+      } else {
+        this.modifyConfiguration.addConfiguration(modifyConfiguration);
+      }
     }
   }
 
@@ -125,14 +137,14 @@ public class InputNode extends Node<InputOperator>
               ModifyConfigurationTuple modifyConfigurationTuple = null;
 
               synchronized (configurationChangeLock) {
-                Collection<ConfigurationChange> configurationChanges = configurationChangeBatch.remove(this.name);
+                Collection<ConfigurationChange> configurationChanges = modifyConfiguration.remove(this.name);
 
                 if (configurationChanges != null) {
                   PropertyChange.applyPropertyChanges(configurationChanges, operator);
                 }
 
-                if (!configurationChangeBatch.isEmpty()) {
-                  modifyConfigurationTuple = new ModifyConfigurationTuple(configurationChangeBatch, t.getWindowId());
+                if (!modifyConfiguration.isEmpty()) {
+                  modifyConfigurationTuple = new ModifyConfigurationTuple(modifyConfiguration, t.getWindowId());
                 }
               }
 

@@ -18,7 +18,13 @@
  */
 package com.datatorrent.stram.api;
 
+import java.io.IOException;
 import java.io.Serializable;
+
+import com.datatorrent.api.Operator;
+import com.datatorrent.api.StatsListener;
+import com.datatorrent.stram.engine.InputNode;
+import com.datatorrent.stram.engine.Node;
 
 /**
  *
@@ -29,7 +35,7 @@ public class StramToNodeModifyConfigurationRequest extends StreamingContainerUmb
 
   public StramToNodeModifyConfigurationRequest()
   {
-    requestType = RequestType.CUSTOM;
+    requestType = RequestType.MODIFY_CONFIGURATION;
     cmd = null;
   }
 
@@ -41,6 +47,25 @@ public class StramToNodeModifyConfigurationRequest extends StreamingContainerUmb
   public void setModifyConfiguration(ModifyConfiguration modifyConfiguration)
   {
     this.modifyConfiguration = modifyConfiguration;
+  }
+
+  public static class ModifyConfigurationDelegate implements RequestFactory.RequestDelegate {
+
+    @Override
+    public StatsListener.OperatorRequest getRequestExecutor(final Node<?> node,
+      final StreamingContainerUmbilicalProtocol.StramToNodeRequest snr)
+    {
+      return new StatsListener.OperatorRequest()
+      {
+        @Override
+        public StatsListener.OperatorResponse execute(Operator operator, int operatorId, long windowId)
+          throws IOException
+        {
+          ((InputNode)node).addConfigurationChange(((StramToNodeModifyConfigurationRequest)snr).modifyConfiguration);
+          return null;
+        }
+      };
+    }
   }
 
   private static final long serialVersionUID = -519483193483781325L;

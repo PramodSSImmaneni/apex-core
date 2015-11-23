@@ -18,17 +18,15 @@
  */
 package com.datatorrent.stram.tuple;
 
-import com.datatorrent.bufferserver.packet.MessageType;
-import com.datatorrent.stram.api.ModifyConfiguration;
-
 import java.util.Collection;
 import java.util.Set;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Sets;
 
+import com.datatorrent.bufferserver.packet.MessageType;
 import com.datatorrent.stram.api.ConfigurationChange;
-import com.datatorrent.stram.api.ConfigurationChangeBatch;
+import com.datatorrent.stram.api.ModifyConfiguration;
 
 /**
  *
@@ -36,7 +34,6 @@ import com.datatorrent.stram.api.ConfigurationChangeBatch;
 public class ModifyConfigurationTuple extends Tuple
 {
   public ModifyConfiguration modifyConfiguration;
-  private ConfigurationChangeBatch configurationChangeBatch;
   private Set<String> seenOperators;
 
   public ModifyConfigurationTuple(long windowId, ModifyConfiguration modifyConfiguration)
@@ -45,30 +42,30 @@ public class ModifyConfigurationTuple extends Tuple
     this.modifyConfiguration = modifyConfiguration;
   }
 
-  public ModifyConfigurationTuple(ConfigurationChangeBatch configurationChangeBatch, long windowId)
+  public ModifyConfigurationTuple(ModifyConfiguration modifyConfiguration, long windowId)
   {
     super(MessageType.MODIFY_CONFIGURATION, windowId);
 
-    Preconditions.checkNotNull(configurationChangeBatch);
-    Preconditions.checkArgument(!configurationChangeBatch.isEmpty(), "The given " + ConfigurationChangeBatch.class.getSimpleName() + " cannot be empty.");
+    Preconditions.checkNotNull(modifyConfiguration);
+    Preconditions.checkArgument(!modifyConfiguration.isEmpty(), "The given " + ModifyConfiguration.class.getSimpleName() + " cannot be empty.");
 
-    this.configurationChangeBatch = configurationChangeBatch;
+    this.modifyConfiguration = modifyConfiguration;
     seenOperators = Sets.newHashSet();
   }
 
   public Collection<ConfigurationChange> remove(String operatorName)
   {
-    return configurationChangeBatch.remove(operatorName);
+    return modifyConfiguration.remove(operatorName);
   }
 
   public Collection<ConfigurationChange> get(String operatorName)
   {
-    return configurationChangeBatch.get(operatorName);
+    return modifyConfiguration.get(operatorName);
   }
 
   public boolean isEmpty()
   {
-    return configurationChangeBatch.isEmpty();
+    return modifyConfiguration.isEmpty();
   }
 
   public void addSeenOperator(String operatorName)

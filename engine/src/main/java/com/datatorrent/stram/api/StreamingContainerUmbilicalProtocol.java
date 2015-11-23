@@ -255,7 +255,7 @@ public interface StreamingContainerUmbilicalProtocol extends VersionedProtocol {
   public static class StramToNodeRequest implements Serializable {
     public static enum RequestType
     {
-      START_RECORDING, STOP_RECORDING, SYNC_RECORDING, SET_LOG_LEVEL, CUSTOM
+      START_RECORDING, STOP_RECORDING, SYNC_RECORDING, SET_LOG_LEVEL, SET_PROPERTY, MODIFY_CONFIGURATION, CUSTOM
     }
 
     private static final long serialVersionUID = 1L;

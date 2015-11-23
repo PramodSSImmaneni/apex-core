@@ -124,6 +124,7 @@ import com.datatorrent.stram.api.Checkpoint;
 import com.datatorrent.stram.api.ContainerContext;
 import com.datatorrent.stram.api.ModifyConfiguration;
 import com.datatorrent.stram.api.OperatorDeployInfo;
+import com.datatorrent.stram.api.PropertyChange;
 import com.datatorrent.stram.api.StramEvent;
 import com.datatorrent.stram.api.StramToNodeChangeLoggersRequest;
 import com.datatorrent.stram.api.StramToNodeGetPropertyRequest;
@@ -2681,13 +2682,8 @@ public class StreamingContainerManager implements PlanContext
     LogicalPlanConfiguration.setOperatorProperties(logicalOperator.getOperator(), properties);
 
     ModifyConfiguration modifyConfiguration = new ModifyConfiguration();
-    StramToNodeSetPropertyRequest setPropertyRequest = new StramToNodeSetPropertyRequest();
-    setPropertyRequest.setPropertyKey(propertyName);
-    setPropertyRequest.setPropertyValue(propertyValue);
-    Map<String, Collection<? extends StatsListener.OperatorRequest>> operatorConfiguration = modifyConfiguration.getOperatorConfiguration();
-    List<StatsListener.OperatorRequest> operatorRequests = new ArrayList<StatsListener.OperatorRequest>();
-    operatorRequests.add(setPropertyRequest.cmd);
-    operatorConfiguration.put(logicalOperator.getName(), operatorRequests);
+    PropertyChange propertyChange = new PropertyChange(propertyName, propertyValue);
+    modifyConfiguration.add(logicalOperator.getName(), propertyChange);
 
     List<OperatorMeta> rootOperators = plan.getLogicalPlan().getRootOperators();
     for (OperatorMeta operator : rootOperators) {

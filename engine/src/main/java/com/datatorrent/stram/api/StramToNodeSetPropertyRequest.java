@@ -47,7 +47,7 @@ public class StramToNodeSetPropertyRequest extends StreamingContainerUmbilicalPr
 
   public StramToNodeSetPropertyRequest()
   {
-    requestType = RequestType.CUSTOM;
+    requestType = RequestType.SET_PROPERTY;
     //This is intentionally not set because we need to use a RequestDelegate to create our OperatorRequest.
     //The RequestDelegate is required because we nee
     cmd = null;

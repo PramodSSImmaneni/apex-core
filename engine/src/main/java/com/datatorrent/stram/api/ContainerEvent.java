@@ -34,7 +34,8 @@ public interface ContainerEvent
 {
   Class<?> CONTAINER_EVENTS_LISTENERS[] = new Class<?>[] {
     com.datatorrent.stram.engine.BufferServerStatsSubscriber.class,
-    com.datatorrent.stram.debug.TupleRecorderCollection.class
+    com.datatorrent.stram.debug.TupleRecorderCollection.class,
+    com.datatorrent.stram.configuration.ConfigurationAgent.class
   };
 
   /**
