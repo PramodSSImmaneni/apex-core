@@ -24,6 +24,8 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import com.datatorrent.api.Idempotency;
+
 /**
  * Annotation to specify characteristics of an operator.
  *
@@ -49,4 +51,8 @@ public @interface OperatorAnnotation
    * @return whether operator can be checkpointed in middle of an application window.
    */
   public boolean checkpointableWithinAppWindow() default true;
+
+  public Idempotency idempotent() default Idempotency.DEFAULT;
+
+  public boolean requireIdempotency() default false;
 }

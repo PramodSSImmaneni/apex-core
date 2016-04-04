@@ -313,6 +313,9 @@ public interface Context
     Attribute<AutoMetric.DimensionsScheme> METRICS_DIMENSIONS_SCHEME = new Attribute<AutoMetric.DimensionsScheme>(new
         Object2String<AutoMetric.DimensionsScheme>());
 
+    Attribute<Idempotency> IDEMPOTENT = new Attribute<Idempotency>(Idempotency.DEFAULT, new StringCodec.Enum2String<>
+        (Idempotency.class));
+
     /**
      * Return the operator runtime id.
      *

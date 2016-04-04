@@ -75,6 +75,7 @@ import com.datatorrent.api.Attribute.AttributeMap;
 import com.datatorrent.api.Attribute.AttributeMap.DefaultAttributeMap;
 import com.datatorrent.api.AutoMetric;
 import com.datatorrent.api.DAG;
+import com.datatorrent.api.Idempotency;
 import com.datatorrent.api.InputOperator;
 import com.datatorrent.api.Module;
 import com.datatorrent.api.Module.ProxyInputPort;
@@ -1681,10 +1682,11 @@ public class LogicalPlan implements Serializable, DAG
   {
     public int nodeIndex = 0;
     public Stack<OperatorMeta> stack = new Stack<OperatorMeta>();
-    public Stack<OperatorMeta> path = new Stack<OperatorMeta>();
+    //public Stack<OperatorMeta> path = new Stack<OperatorMeta>();
     public List<Set<OperatorMeta>> stronglyConnected = new ArrayList<>();
     public OperatorMeta invalidLoopAt;
     public List<Set<OperatorMeta>> invalidCycles = new ArrayList<>();
+    public List<IdempotencyChain> idempotencyChains = new ArrayList<>();
   }
 
   public void resetNIndex()
@@ -1978,11 +1980,29 @@ public class LogicalPlan implements Serializable, DAG
    */
   public void findStronglyConnected(OperatorMeta om, ValidationContext ctx)
   {
+  }
+
+  public void findStronglyConnected(OperatorMeta om, ValidationContext ctx, IdempotencyChain idempotencyChain)
+  {
     om.nindex = ctx.nodeIndex;
     om.lowlink = ctx.nodeIndex;
     ctx.nodeIndex++;
     ctx.stack.push(om);
-    ctx.path.push(om);
+    //ctx.path.push(om);
+
+    if (idempotencyChain != null) {
+      idempotencyChain.operators.add(om);
+    }
+    boolean idempotent = isIdempotent(om);
+    if (!idempotent) {
+      IdempotencyChain omIdempotentChain = new IdempotencyChain();
+      if (idempotencyChain != null) {
+        idempotencyChain.nonIdempotentChains.add(omIdempotentChain);
+      } else {
+        ctx.idempotencyChains.add(omIdempotentChain);
+      }
+      idempotencyChain = omIdempotentChain;
+    }
 
     // depth first successors traversal
     for (StreamMeta downStream: om.outputStreams.values()) {
@@ -1997,7 +2017,7 @@ public class LogicalPlan implements Serializable, DAG
         }
         if (successor.nindex == null) {
           // not visited yet
-          findStronglyConnected(successor, ctx);
+          findStronglyConnected(successor, ctx, idempotencyChain);
           om.lowlink = Math.min(om.lowlink, successor.lowlink);
         }
         else if (ctx.stack.contains(successor)) {
@@ -2007,6 +2027,7 @@ public class LogicalPlan implements Serializable, DAG
             OperatorMeta om2 = ctx.stack.get(i-1);
             if (om2.getOperator() instanceof Operator.DelayOperator) {
               isDelayLoop = true;
+              break;
             }
             if (om2 == successor) {
               break;
@@ -2037,8 +2058,24 @@ public class LogicalPlan implements Serializable, DAG
         }
       }
     }
-    ctx.path.pop();
+    //ctx.path.pop();
 
+  }
+
+  public boolean isIdempotent(OperatorMeta om) {
+    boolean idempotent = false;
+    Idempotency idempotency = om.getAttributes().get(OperatorContext.IDEMPOTENT);
+    if ((idempotency == null) && (om.operatorAnnotation != null)) {
+      idempotency = om.operatorAnnotation.idempotent();
+    }
+    if (idempotency == Idempotency.DEFAULT) {
+      if (!InputOperator.class.isAssignableFrom(om.operator.getClass())) {
+        idempotent = true;
+      }
+    } else if (idempotency == Idempotency.YES) {
+      idempotent = true;
+    }
+    return idempotent;
   }
 
   public void findInvalidDelays(OperatorMeta om, List<List<String>> invalidDelays, Stack<OperatorMeta> stack)
