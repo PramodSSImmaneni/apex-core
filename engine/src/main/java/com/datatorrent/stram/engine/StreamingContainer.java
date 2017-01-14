@@ -223,7 +223,7 @@ public class StreamingContainer extends YarnContainerMain
           blockCount = bufferServerRAM / blocksize;
         }
         // start buffer server, if it was not set externally
-        bufferServer = new Server(0, blocksize * 1024 * 1024, blockCount);
+        bufferServer = new Server(0, blocksize * 1024 * 1024, blockCount, ctx.getValue(Context.DAGContext.BUFFER_BACK_PRESSURE));
         bufferServer.setAuthToken(ctx.getValue(StreamingContainerContext.BUFFER_SERVER_TOKEN));
         if (ctx.getValue(Context.DAGContext.BUFFER_SPOOLING)) {
           bufferServer.setSpoolStorage(new DiskStorage());

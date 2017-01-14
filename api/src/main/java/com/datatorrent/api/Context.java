@@ -402,6 +402,10 @@ public interface Context
      */
     Attribute<Boolean> BUFFER_SPOOLING = new Attribute<Boolean>(true);
     /**
+     * Whether to apply back pressure and stall the upstream operator when the downstream operator is slow and the buffer fills up with unread data.
+     */
+    Attribute<Boolean> BUFFER_BACK_PRESSURE = new Attribute<Boolean>(true);
+    /**
      * The streaming window size to use for the application. It is specified in milliseconds. Default value is 500ms.
      */
     Attribute<Integer> STREAMING_WINDOW_SIZE_MILLIS = new Attribute<Integer>(500);

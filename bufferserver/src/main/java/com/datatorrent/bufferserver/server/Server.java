@@ -73,6 +73,7 @@ public class Server implements ServerListener
   private InetSocketAddress address;
   private final ExecutorService serverHelperExecutor;
   private final ExecutorService storageHelperExecutor;
+  private boolean backPressure;
 
   private byte[] authToken;
 
@@ -86,9 +87,15 @@ public class Server implements ServerListener
 
   public Server(int port, int blocksize, int numberOfCacheBlocks)
   {
+    this(port, blocksize, numberOfCacheBlocks, true);
+  }
+
+  public Server(int port, int blocksize, int numberOfCacheBlocks, boolean backPressure)
+  {
     this.port = port;
     this.blockSize = blocksize;
     this.numberOfCacheBlocks = numberOfCacheBlocks;
+    this.backPressure = backPressure;
     serverHelperExecutor = Executors.newSingleThreadExecutor(new NameableThreadFactory("ServerHelper"));
     final ArrayBlockingQueue<Runnable> workQueue = new ArrayBlockingQueue<>(numberOfCacheBlocks);
     final NameableThreadFactory threadFactory = new NameableThreadFactory("StorageHelper");
@@ -267,8 +274,8 @@ public class Server implements ServerListener
           DataList dl = publisherBuffers.get(upstream_identifier);
           if (dl == null) {
             dl = Tuple.FAST_VERSION.equals(request.getVersion()) ?
-                new FastDataList(upstream_identifier, blockSize, numberOfCacheBlocks) :
-                new DataList(upstream_identifier, blockSize, numberOfCacheBlocks);
+                new FastDataList(upstream_identifier, blockSize, numberOfCacheBlocks, backPressure) :
+                new DataList(upstream_identifier, blockSize, numberOfCacheBlocks, backPressure);
             DataList odl = publisherBuffers.putIfAbsent(upstream_identifier, dl);
             if (odl != null) {
               dl = odl;
@@ -387,8 +394,8 @@ public class Server implements ServerListener
       }
     } else {
       dl = Tuple.FAST_VERSION.equals(request.getVersion()) ?
-          new FastDataList(identifier, blockSize, numberOfCacheBlocks) :
-          new DataList(identifier, blockSize, numberOfCacheBlocks);
+          new FastDataList(identifier, blockSize, numberOfCacheBlocks, backPressure) :
+          new DataList(identifier, blockSize, numberOfCacheBlocks, backPressure);
       DataList odl = publisherBuffers.putIfAbsent(identifier, dl);
       if (odl != null) {
         dl = odl;

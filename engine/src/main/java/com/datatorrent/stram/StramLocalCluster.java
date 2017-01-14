@@ -38,6 +38,7 @@ import org.apache.hadoop.fs.FileContext;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.ipc.ProtocolSignature;
 
+import com.datatorrent.api.Context;
 import com.datatorrent.api.DAG;
 import com.datatorrent.api.LocalMode.Controller;
 import com.datatorrent.api.Operator;
@@ -81,6 +82,7 @@ public class StramLocalCluster implements Runnable, Controller
   private final Map<String, StreamingContainer> injectShutdown = new ConcurrentHashMap<>();
   private boolean heartbeatMonitoringEnabled = true;
   private Callable<Boolean> exitCondition;
+  private boolean backPressure;
 
   public interface MockComponentFactory
   {
@@ -311,6 +313,7 @@ public class StramLocalCluster implements Runnable, Controller
     if (dag.getAttributes().get(OperatorContext.STORAGE_AGENT) == null) {
       dag.setAttribute(OperatorContext.STORAGE_AGENT, new AsyncFSStorageAgent(new Path(pathUri, LogicalPlan.SUBDIR_CHECKPOINTS).toString(), null));
     }
+    backPressure = dag.getValue(Context.DAGContext.BUFFER_BACK_PRESSURE);
     this.dnmgr = new StreamingContainerManager(dag);
     this.umbilical = new UmbilicalProtocolLocalImpl();
   }
@@ -446,7 +449,7 @@ public class StramLocalCluster implements Runnable, Controller
   {
     if (!perContainerBufferServer) {
       StreamingContainer.eventloop.start();
-      bufferServer = new Server(0, 1024 * 1024,8);
+      bufferServer = new Server(0, 1024 * 1024, 8, backPressure);
       try {
         bufferServer.setSpoolStorage(new DiskStorage());
       } catch (IOException e) {
