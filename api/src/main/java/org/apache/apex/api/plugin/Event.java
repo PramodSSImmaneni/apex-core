@@ -16,32 +16,34 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.apex.engine.plugin;
+package org.apache.apex.api.plugin;
 
-import org.apache.apex.api.plugin.Event;
-import org.apache.apex.api.plugin.EventType;
-import org.apache.hadoop.service.Service;
+import org.apache.hadoop.classification.InterfaceStability.Evolving;
 
-import com.datatorrent.api.DAG;
-
-public interface ApexPluginDispatcher extends Service
+/**
+ * The class represents a plugin event that is delivered to plugins to notify them of important system events.
+ *
+ * Plugins express interest in receiving events by registering handlers for the event type and they handlers receive the
+ * events.
+ */
+@Evolving
+public interface Event<T extends EventType>
 {
+  T getEventType();
 
-  /**
-   * This is internal event, which is not delivered to the plugins.
-   */
-  EventType DAG_CHANGE = new EventType(){};
-
-  class DAGChangeEvent extends Event.BaseEvent<EventType>
+  @Evolving
+  public class BaseEvent<T extends EventType> implements Event<T>
   {
-    DAG dag;
+    private T eventType;
 
-    public DAGChangeEvent(DAG dag)
+    public BaseEvent(T eventType)
     {
-      super(DAG_CHANGE);
-      this.dag = dag;
+      this.eventType = eventType;
+    }
+
+    public T getEventType()
+    {
+      return eventType;
     }
   }
-
-  void dispatch(Event e);
 }

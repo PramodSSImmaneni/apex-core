@@ -28,13 +28,15 @@ import javax.validation.ValidationException;
 import org.slf4j.Logger;
 
 import org.apache.apex.api.plugin.DAGSetupPlugin;
+import org.apache.apex.api.plugin.DAGSetupPlugin.DAGSetupEvent;
+import org.apache.apex.api.plugin.Plugin.EventHandler;
 
 import com.datatorrent.api.DAG;
 import com.datatorrent.api.Operator;
 
 import static org.slf4j.LoggerFactory.getLogger;
 
-public class PropertyInjectorVisitor implements DAGSetupPlugin
+public class PropertyInjectorVisitor implements DAGSetupPlugin, EventHandler<DAGSetupEvent>
 {
   private static final Logger LOG = getLogger(PropertyInjectorVisitor.class);
 
@@ -56,45 +58,16 @@ public class PropertyInjectorVisitor implements DAGSetupPlugin
     } catch (IOException ex) {
       throw new ValidationException("Not able to load input file " + path);
     }
+    context.register(DAGSetupPlugin.DAGSetupEventType.PRE_VALIDATE_DAG, this);
   }
 
   @Override
-  public void prePopulateDAG()
-  {
-
-  }
-
-  @Override
-  public void postPopulateDAG()
-  {
-
-  }
-
-  @Override
-  public void preConfigureDAG()
-  {
-
-  }
-
-  @Override
-  public void postConfigureDAG()
-  {
-
-  }
-
-  @Override
-  public void preValidateDAG()
+  public void handle(DAGSetupEvent event)
   {
     for (DAG.OperatorMeta ometa : dag.getAllOperatorsMeta()) {
       Operator o = ometa.getOperator();
       LogicalPlanConfiguration.setOperatorProperties(o, propertyMap);
     }
-  }
-
-  @Override
-  public void postValidateDAG()
-  {
-
   }
 
   public PropertyInjectorVisitor()

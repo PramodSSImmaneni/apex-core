@@ -21,12 +21,35 @@ package org.apache.apex.api.plugin;
 import org.apache.hadoop.classification.InterfaceStability;
 
 import com.datatorrent.api.Component;
+import com.datatorrent.api.Context;
 
 /**
- * Marker interface for ApexPlugins.
+ * An Apex plugin is user code which runs inside the Apex engine. Plugin implementations implement this interface.
+ *
+ * Plugins can identify extension points by registering interest in events in the {@link Component#setup(Context)}
+ * initialization method. They should also cleanup any additional resources created during shutdown such as helper
+ * threads and open files in the {@link Component#teardown()} method.
  * @param <T>
  */
 @InterfaceStability.Evolving
 public interface Plugin<T extends PluginContext> extends Component<T>
 {
+
+  /**
+   * A handler that handles an event in the Apex engine. Plugins register interest in events by registering handlers
+   * using the PluginContext.
+   * @param <E> The event type
+   */
+  @InterfaceStability.Evolving
+  interface EventHandler<E extends Event>
+  {
+    /**
+     * Handle a event.
+     *
+     * This method is called when the event occurs.
+     *
+     * @param event
+     */
+    void handle(E event);
+  }
 }

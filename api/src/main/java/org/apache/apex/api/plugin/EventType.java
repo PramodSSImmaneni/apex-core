@@ -16,32 +16,14 @@
  * specific language governing permissions and limitations
  * under the License.
  */
-package org.apache.apex.engine.plugin;
+package org.apache.apex.api.plugin;
 
-import org.apache.apex.api.plugin.Event;
-import org.apache.apex.api.plugin.EventType;
-import org.apache.hadoop.service.Service;
+import org.apache.hadoop.classification.InterfaceStability;
 
-import com.datatorrent.api.DAG;
-
-public interface ApexPluginDispatcher extends Service
+/**
+ * Marker interface for plugin event type.
+ */
+@InterfaceStability.Evolving
+public interface EventType
 {
-
-  /**
-   * This is internal event, which is not delivered to the plugins.
-   */
-  EventType DAG_CHANGE = new EventType(){};
-
-  class DAGChangeEvent extends Event.BaseEvent<EventType>
-  {
-    DAG dag;
-
-    public DAGChangeEvent(DAG dag)
-    {
-      super(DAG_CHANGE);
-      this.dag = dag;
-    }
-  }
-
-  void dispatch(Event e);
 }

@@ -22,15 +22,14 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.apex.engine.api.plugin.DAGExecutionPlugin;
+import org.apache.apex.engine.api.plugin.DAGExecutionPlugin.DAGExecutionEvent.CommitExecutionEvent;
+import org.apache.apex.engine.api.plugin.DAGExecutionPlugin.DAGExecutionEvent.HeartbeatExecutionEvent;
+import org.apache.apex.engine.api.plugin.DAGExecutionPlugin.DAGExecutionEvent.StramExecutionEvent;
 import org.apache.apex.engine.api.plugin.DAGExecutionPluginContext;
-import org.apache.apex.engine.api.plugin.DAGExecutionPluginContext.Handler;
 
-import com.datatorrent.stram.api.StramEvent;
-import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol;
-
-import static org.apache.apex.engine.api.plugin.DAGExecutionPluginContext.COMMIT_EVENT;
-import static org.apache.apex.engine.api.plugin.DAGExecutionPluginContext.HEARTBEAT;
-import static org.apache.apex.engine.api.plugin.DAGExecutionPluginContext.STRAM_EVENT;
+import static org.apache.apex.engine.api.plugin.DAGExecutionPlugin.DAGExecutionEventType.COMMIT_EVENT;
+import static org.apache.apex.engine.api.plugin.DAGExecutionPlugin.DAGExecutionEventType.HEARTBEAT_EVENT;
+import static org.apache.apex.engine.api.plugin.DAGExecutionPlugin.DAGExecutionEventType.STRAM_EVENT;
 
 public class DebugPlugin implements DAGExecutionPlugin
 {
@@ -42,30 +41,30 @@ public class DebugPlugin implements DAGExecutionPlugin
   @Override
   public void setup(DAGExecutionPluginContext context)
   {
-    context.register(STRAM_EVENT, new Handler<StramEvent>()
+    context.register(STRAM_EVENT, new EventHandler<StramExecutionEvent>()
     {
       @Override
-      public void handle(StramEvent stramEvent)
+      public void handle(StramExecutionEvent stramEvent)
       {
         eventCount++;
         latch.countDown();
       }
     });
 
-    context.register(HEARTBEAT, new Handler<StreamingContainerUmbilicalProtocol.ContainerHeartbeat>()
+    context.register(HEARTBEAT_EVENT, new EventHandler<HeartbeatExecutionEvent>()
     {
       @Override
-      public void handle(StreamingContainerUmbilicalProtocol.ContainerHeartbeat heartbeat)
+      public void handle(HeartbeatExecutionEvent heartbeatEvent)
       {
         heartbeatCount++;
         latch.countDown();
       }
     });
 
-    context.register(COMMIT_EVENT, new Handler<Long>()
+    context.register(COMMIT_EVENT, new EventHandler<CommitExecutionEvent>()
     {
       @Override
-      public void handle(Long aLong)
+      public void handle(CommitExecutionEvent event)
       {
         commitCount++;
         latch.countDown();

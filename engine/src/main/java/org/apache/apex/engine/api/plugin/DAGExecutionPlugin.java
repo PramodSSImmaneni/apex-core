@@ -18,13 +18,20 @@
  */
 package org.apache.apex.engine.api.plugin;
 
+import org.apache.apex.api.plugin.Event;
+import org.apache.apex.api.plugin.EventType;
 import org.apache.apex.api.plugin.Plugin;
 import org.apache.hadoop.classification.InterfaceStability;
 
+import com.datatorrent.stram.api.StramEvent;
+import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol;
+
+import static org.apache.apex.engine.api.plugin.DAGExecutionPlugin.DAGExecutionEventType.COMMIT_EVENT;
+import static org.apache.apex.engine.api.plugin.DAGExecutionPlugin.DAGExecutionEventType.HEARTBEAT_EVENT;
+import static org.apache.apex.engine.api.plugin.DAGExecutionPlugin.DAGExecutionEventType.STRAM_EVENT;
+
 /**
- * An Apex plugin is a user code which runs inside Stram. The interaction
- * between plugin and Stram is managed by DAGExecutionPluginContext. Plugin can register to handle event in interest
- * with callback handler using ${@link DAGExecutionPluginContext#register(DAGExecutionPluginContext.RegistrationType, DAGExecutionPluginContext.Handler)}
+ * DAGExecutionPlugin allows user provided code to respond to various events during the application runtime.
  *
  * Following events are supported
  * <ul>
@@ -33,11 +40,68 @@ import org.apache.hadoop.classification.InterfaceStability;
  *   <li>{@see DAGExecutionPluginContext.COMMIT_EVENT} When committedWindowId changes in the platform an event will be delivered to the plugin</li>
  * </ul>
  *
- * A plugin should register a single handler for an event, In case multiple handlers are registered for an event,
- * then the last registered handler will be used. Plugin should cleanup additional resources created by it during shutdown
- * such as helper threads and open files.
  */
 @InterfaceStability.Evolving
 public interface DAGExecutionPlugin extends Plugin<DAGExecutionPluginContext>
 {
+  enum DAGExecutionEventType implements EventType
+  {
+    HEARTBEAT_EVENT, STRAM_EVENT, COMMIT_EVENT
+  }
+
+  abstract class DAGExecutionEvent<T extends DAGExecutionEventType> extends Event.BaseEvent<T>
+  {
+    protected DAGExecutionEvent(T eventType)
+    {
+      super(eventType);
+    }
+
+    public static class HeartbeatExecutionEvent extends DAGExecutionEvent<DAGExecutionEventType>
+    {
+      private final StreamingContainerUmbilicalProtocol.ContainerHeartbeat heartbeat;
+
+      public HeartbeatExecutionEvent(StreamingContainerUmbilicalProtocol.ContainerHeartbeat heartbeat)
+      {
+        super(HEARTBEAT_EVENT);
+        this.heartbeat = heartbeat;
+      }
+
+      public StreamingContainerUmbilicalProtocol.ContainerHeartbeat getHeartbeat()
+      {
+        return heartbeat;
+      }
+    }
+
+    public static class StramExecutionEvent extends DAGExecutionEvent<DAGExecutionEventType>
+    {
+      private final StramEvent stramEvent;
+
+      public StramExecutionEvent(StramEvent stramEvent)
+      {
+        super(STRAM_EVENT);
+        this.stramEvent = stramEvent;
+      }
+
+      public StramEvent getStramEvent()
+      {
+        return stramEvent;
+      }
+    }
+
+    public static class CommitExecutionEvent extends DAGExecutionEvent<DAGExecutionEventType>
+    {
+      private final long commitWindow;
+
+      public CommitExecutionEvent(long commitWindow)
+      {
+        super(COMMIT_EVENT);
+        this.commitWindow = commitWindow;
+      }
+
+      public long getCommitWindow()
+      {
+        return commitWindow;
+      }
+    }
+  }
 }

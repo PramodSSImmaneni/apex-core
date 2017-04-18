@@ -30,16 +30,12 @@ import com.datatorrent.api.DAG;
 import com.datatorrent.api.StatsListener.BatchedOperatorStats;
 import com.datatorrent.common.util.Pair;
 import com.datatorrent.stram.StramAppContext;
-import com.datatorrent.stram.api.StramEvent;
-import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol;
 import com.datatorrent.stram.util.VersionInfo;
 import com.datatorrent.stram.webapp.AppInfo;
 import com.datatorrent.stram.webapp.LogicalOperatorInfo;
 
 /**
- * An Apex plugin is a user code which runs inside Stram. The interaction
- * between plugin and Stram is managed by DAGExecutionPluginContext. Plugin can register to handle event in interest
- * with callback handler using ${@link DAGExecutionPluginContext#register(DAGExecutionPluginContext.RegistrationType, DAGExecutionPluginContext.Handler)}
+ * The context for the execution plugins.
  *
  * Following events are supported
  * <ul>
@@ -48,28 +44,10 @@ import com.datatorrent.stram.webapp.LogicalOperatorInfo;
  *   <li>{@see DAGExecutionPluginContext.COMMIT_EVENT} When committedWindowId changes in the platform an event will be delivered to the plugin</li>
  * </ul>
  *
- * A plugin should register a single handler for an event, In case multiple handlers are registered for an event,
- * then the last registered handler will be used. Plugin should cleanup additional resources created by it during shutdown
- * such as helper threads and open files.
  */
 @InterfaceStability.Evolving
 public interface DAGExecutionPluginContext extends PluginContext
 {
-  class RegistrationType<T>
-  {
-  }
-
-  RegistrationType<StreamingContainerUmbilicalProtocol.ContainerHeartbeat> HEARTBEAT = new RegistrationType<>();
-  RegistrationType<StramEvent> STRAM_EVENT = new RegistrationType<>();
-  RegistrationType<Long> COMMIT_EVENT = new RegistrationType<>();
-
-  <T> void register(RegistrationType<T> type, Handler<T> handler);
-
-  interface Handler<T>
-  {
-    void handle(T data);
-  }
-
   VersionInfo getEngineVersion();
 
   StramAppContext getApplicationContext();

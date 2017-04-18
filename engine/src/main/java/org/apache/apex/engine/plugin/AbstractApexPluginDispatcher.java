@@ -22,15 +22,14 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URI;
 import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.apache.apex.api.plugin.Event;
+import org.apache.apex.api.plugin.EventType;
+import org.apache.apex.api.plugin.Plugin;
 import org.apache.apex.engine.api.plugin.DAGExecutionPlugin;
-import org.apache.apex.engine.api.plugin.DAGExecutionPluginContext.Handler;
-import org.apache.apex.engine.api.plugin.DAGExecutionPluginContext.RegistrationType;
 import org.apache.apex.engine.api.plugin.PluginLocator;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.hadoop.conf.Configuration;
@@ -62,7 +61,7 @@ public abstract class AbstractApexPluginDispatcher extends AbstractService imple
   private final AppInfo.AppStats stats;
   protected Configuration launchConfig;
   protected FileContext fileContext;
-  protected final Map<DAGExecutionPlugin, PluginInfo> pluginInfoMap = new HashMap<>();
+  protected final PluginInfoMap<DAGExecutionPlugin> pluginInfoMap = new PluginInfoMap<>();
   private volatile DAG clonedDAG = null;
 
   public AbstractApexPluginDispatcher(PluginLocator locator, StramAppContext context, StreamingContainerManager dmgr, AppInfo.AppStats stats)
@@ -123,50 +122,9 @@ public abstract class AbstractApexPluginDispatcher extends AbstractService imple
     super.serviceStop();
   }
 
-  /**
-   * Keeps information about plugin and its registrations. Dispatcher use this
-   * information while delivering events to plugin.
-   */
-  protected class PluginInfo
+  public <T extends EventType, E extends Event<T>> void register(T eventType, Plugin.EventHandler<E> handler, DAGExecutionPlugin owner)
   {
-    private final DAGExecutionPlugin plugin;
-    private final Map<RegistrationType<?>, Handler<?>> registrationMap = new HashMap<>();
-
-    <T> void put(RegistrationType<T> registrationType, Handler<T> handler)
-    {
-      registrationMap.put(registrationType, handler);
-    }
-
-    <T> Handler<T> get(RegistrationType<T> registrationType)
-    {
-      return (Handler<T>)registrationMap.get(registrationType);
-    }
-
-    public PluginInfo(DAGExecutionPlugin plugin)
-    {
-      this.plugin = plugin;
-    }
-
-    public DAGExecutionPlugin getPlugin()
-    {
-      return plugin;
-    }
-  }
-
-  PluginInfo getPluginInfo(DAGExecutionPlugin plugin)
-  {
-    PluginInfo pInfo = pluginInfoMap.get(plugin);
-    if (pInfo == null) {
-      pInfo = new PluginInfo(plugin);
-      pluginInfoMap.put(plugin, pInfo);
-    }
-    return pInfo;
-  }
-
-  private <T> void register(RegistrationType<T> type, Handler<T> handler, DAGExecutionPlugin owner)
-  {
-    PluginInfo pInfo = getPluginInfo(owner);
-    pInfo.put(type, handler);
+    pluginInfoMap.register(eventType, handler, owner);
   }
 
   /**
@@ -184,7 +142,7 @@ public abstract class AbstractApexPluginDispatcher extends AbstractService imple
     }
 
     @Override
-    public <T> void register(RegistrationType<T> type, Handler<T> handler)
+    public <T extends EventType, E extends Event<T>> void register(T type, Plugin.EventHandler<E> handler)
     {
       AbstractApexPluginDispatcher.this.register(type, handler, owner);
     }
@@ -198,19 +156,20 @@ public abstract class AbstractApexPluginDispatcher extends AbstractService imple
 
   /**
    * Dispatch events to plugins.
-   * @param registrationType
-   * @param data
+   * @param event The dag execution event
    * @param <T>
    */
-  protected abstract <T> void dispatchEvent(RegistrationType<T> registrationType, T data);
+  protected abstract void dispatchExecutionEvent(DAGExecutionPlugin.DAGExecutionEvent event);
 
   @Override
-  public <T> void dispatch(RegistrationType<T> registrationType, T data)
+  public void dispatch(Event event)
   {
-    if (registrationType == ApexPluginDispatcher.DAG_CHANGE_EVENT) {
-      clonedDAG = SerializationUtils.clone((DAG)data);
-    } else {
-      dispatchEvent(registrationType, data);
+    if (!plugins.isEmpty()) {
+      if (event.getEventType() == ApexPluginDispatcher.DAG_CHANGE) {
+        clonedDAG = SerializationUtils.clone(((DAGChangeEvent)event).dag);
+      } else if (event instanceof DAGExecutionPlugin.DAGExecutionEvent) {
+        dispatchExecutionEvent((DAGExecutionPlugin.DAGExecutionEvent)event);
+      }
     }
   }
 }
