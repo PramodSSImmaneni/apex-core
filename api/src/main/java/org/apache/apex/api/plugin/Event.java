@@ -18,32 +18,42 @@
  */
 package org.apache.apex.api.plugin;
 
+import org.apache.apex.api.plugin.Event.Type;
 import org.apache.hadoop.classification.InterfaceStability.Evolving;
 
 /**
  * The class represents a plugin event that is delivered to plugins to notify them of important system events.
  *
- * Plugins express interest in receiving events by registering handlers for the event type and they handlers receive the
- * events.
+ * Plugins express interest in receiving events by registering handlers for the event type and their handlers receive
+ * the events.
+ * @param <T> event type
  */
 @Evolving
-public interface Event<T extends EventType>
+public interface Event<T extends Type>
 {
-  T getEventType();
+  /**
+   * Marker interface for plugin event type.
+   */
+  @Evolving
+  interface Type
+  {
+  }
+
+  T getType();
 
   @Evolving
-  public class BaseEvent<T extends EventType> implements Event<T>
+  class BaseEvent<T extends Type> implements Event<T>
   {
-    private T eventType;
+    private T type;
 
-    public BaseEvent(T eventType)
+    protected BaseEvent(T type)
     {
-      this.eventType = eventType;
+      this.type = type;
     }
 
-    public T getEventType()
+    public T getType()
     {
-      return eventType;
+      return type;
     }
   }
 }

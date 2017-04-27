@@ -26,26 +26,27 @@ import java.util.Properties;
 import javax.validation.ValidationException;
 
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import org.apache.apex.api.plugin.DAGSetupEvent;
 import org.apache.apex.api.plugin.DAGSetupPlugin;
-import org.apache.apex.api.plugin.DAGSetupPlugin.DAGSetupEvent;
 import org.apache.apex.api.plugin.Plugin.EventHandler;
 
 import com.datatorrent.api.DAG;
 import com.datatorrent.api.Operator;
 
-import static org.slf4j.LoggerFactory.getLogger;
+import static org.apache.apex.api.plugin.DAGSetupEvent.Type.PRE_VALIDATE_DAG;
 
-public class PropertyInjectorVisitor implements DAGSetupPlugin, EventHandler<DAGSetupEvent>
+public class PropertyInjectorVisitor implements DAGSetupPlugin<DAGSetupPlugin.Context>, EventHandler<DAGSetupEvent>
 {
-  private static final Logger LOG = getLogger(PropertyInjectorVisitor.class);
+  private static final Logger LOG = LoggerFactory.getLogger(PropertyInjectorVisitor.class);
 
   private String path;
   private Map<String, String> propertyMap = new HashMap<>();
   private DAG dag;
 
   @Override
-  public void setup(DAGSetupPluginContext context)
+  public void setup(DAGSetupPlugin.Context context)
   {
     this.dag = context.getDAG();
     try {
@@ -58,7 +59,7 @@ public class PropertyInjectorVisitor implements DAGSetupPlugin, EventHandler<DAG
     } catch (IOException ex) {
       throw new ValidationException("Not able to load input file " + path);
     }
-    context.register(DAGSetupPlugin.DAGSetupEventType.PRE_VALIDATE_DAG, this);
+    context.register(PRE_VALIDATE_DAG, this);
   }
 
   @Override

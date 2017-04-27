@@ -18,7 +18,7 @@
  */
 package org.apache.apex.api.plugin;
 
-import org.apache.hadoop.classification.InterfaceStability;
+import org.apache.hadoop.classification.InterfaceStability.Evolving;
 import org.apache.hadoop.conf.Configuration;
 
 import com.datatorrent.api.DAG;
@@ -36,75 +36,14 @@ import com.datatorrent.api.DAG;
  *   <li>After dag is validated</li>
  * </ul>
  */
-@InterfaceStability.Evolving
-public interface DAGSetupPlugin extends Plugin<DAGSetupPlugin.DAGSetupPluginContext>
+@Evolving
+public interface DAGSetupPlugin<T extends DAGSetupPlugin.Context> extends Plugin<T>
 {
-  enum DAGSetupEventType implements EventType
-  {
-    /**
-     * This event is sent before platform adds operators and streams in the DAG. i.e this method
-     * will get called just before {@link com.datatorrent.api.StreamingApplication#populateDAG(DAG, Configuration)}
-     *
-     * For Application specified using property and json file format, this will be sent
-     * before platform adds operators and streams in the DAG as per specification in the file.
-     */
-    PRE_POPULATE_DAG,
-
-    /**
-     * This event is sent after platform adds operators and streams in the DAG. i.e this method
-     * will get called just after {@link com.datatorrent.api.StreamingApplication#populateDAG(DAG, Configuration)}
-     * in case application is specified in java.
-     *
-     * For Application specified using property and json file format, this will be sent
-     * after platform has added operators and streams in the DAG as per specification in the file.
-     */
-    POST_POPULATE_DAG,
-
-    /**
-     * This event is sent before DAG is configured, i.e operator and application
-     * properties/attributes are injected from configuration files.
-     */
-    PRE_CONFIGURE_DAG,
-
-    /**
-     * This event is sent after DAG is configured, i.e operator and application
-     * properties/attributes are injected from configuration files.
-     */
-    POST_CONFIGURE_DAG,
-
-    /**
-     * This event is sent just before dag is validated before final job submission.
-     */
-    PRE_VALIDATE_DAG,
-
-    /**
-     * This event is sent after dag is validated. If plugin makes in incompatible changes
-     * to the DAG at this stage, then application may get launched incorrectly or application
-     * launch may fail.
-     */
-    POST_VALIDATE_DAG;
-
-    public final DAGSetupEvent event;
-
-    DAGSetupEventType()
-    {
-      event = new DAGSetupEvent(this);
-    }
-  }
-
-  class DAGSetupEvent extends Event.BaseEvent<DAGSetupEventType>
-  {
-    public DAGSetupEvent(DAGSetupEventType eventType)
-    {
-      super(eventType);
-    }
-  }
-
   /**
    * The context for the setup plugins
    */
-  @InterfaceStability.Evolving
-  interface DAGSetupPluginContext extends PluginContext
+  @Evolving
+  interface Context<E extends DAGSetupEvent> extends PluginContext<DAGSetupEvent.Type, E>
   {
 
     DAG getDAG();

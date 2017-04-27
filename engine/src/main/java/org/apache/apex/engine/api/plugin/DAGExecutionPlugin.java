@@ -18,90 +18,66 @@
  */
 package org.apache.apex.engine.api.plugin;
 
-import org.apache.apex.api.plugin.Event;
-import org.apache.apex.api.plugin.EventType;
+import java.util.List;
+import java.util.Map;
+import java.util.Queue;
+
 import org.apache.apex.api.plugin.Plugin;
-import org.apache.hadoop.classification.InterfaceStability;
+import org.apache.hadoop.conf.Configuration;
 
-import com.datatorrent.stram.api.StramEvent;
-import com.datatorrent.stram.api.StreamingContainerUmbilicalProtocol;
-
-import static org.apache.apex.engine.api.plugin.DAGExecutionPlugin.DAGExecutionEventType.COMMIT_EVENT;
-import static org.apache.apex.engine.api.plugin.DAGExecutionPlugin.DAGExecutionEventType.HEARTBEAT_EVENT;
-import static org.apache.apex.engine.api.plugin.DAGExecutionPlugin.DAGExecutionEventType.STRAM_EVENT;
+import com.datatorrent.api.DAG;
+import com.datatorrent.api.StatsListener.BatchedOperatorStats;
+import com.datatorrent.common.util.Pair;
+import com.datatorrent.stram.StramAppContext;
+import com.datatorrent.stram.util.VersionInfo;
+import com.datatorrent.stram.webapp.AppInfo;
+import com.datatorrent.stram.webapp.LogicalOperatorInfo;
 
 /**
  * DAGExecutionPlugin allows user provided code to respond to various events during the application runtime.
  *
  * Following events are supported
  * <ul>
- *   <li>{@see DAGExecutionPluginContext.HEARTBEAT} The heartbeat from a container is delivered to the plugin after it has been handled by stram</li>
- *   <li>{@see DAGExecutionPluginContext.STRAM_EVENT} All the Stram event generated in Stram will be delivered to the plugin</li>
- *   <li>{@see DAGExecutionPluginContext.COMMIT_EVENT} When committedWindowId changes in the platform an event will be delivered to the plugin</li>
+ *   <li>{@see Context.HEARTBEAT} The heartbeat from a container is delivered to the plugin after it has been handled by stram</li>
+ *   <li>{@see Context.STRAM_EVENT} All the Stram event generated in Stram will be delivered to the plugin</li>
+ *   <li>{@see Context.COMMIT_EVENT} When committedWindowId changes in the platform an event will be delivered to the plugin</li>
  * </ul>
  *
  */
-@InterfaceStability.Evolving
-public interface DAGExecutionPlugin extends Plugin<DAGExecutionPluginContext>
+public interface DAGExecutionPlugin<T extends DAGExecutionPlugin.Context> extends Plugin<T>
 {
-  enum DAGExecutionEventType implements EventType
+
+  /**
+   * The context for the execution plugins.
+   *
+   * Following events are supported
+   * <ul>
+   *   <li>{@see Context.HEARTBEAT} The heartbeat from a container is delivered to the plugin after it has been handled by stram</li>
+   *   <li>{@see Context.STRAM_EVENT} All the Stram event generated in Stram will be delivered to the plugin</li>
+   *   <li>{@see Context.COMMIT_EVENT} When committedWindowId changes in the platform an event will be delivered to the plugin</li>
+   * </ul>
+   *
+   */
+  interface Context<E extends DAGExecutionEvent> extends PluginContext<DAGExecutionEvent.Type, E>
   {
-    HEARTBEAT_EVENT, STRAM_EVENT, COMMIT_EVENT
-  }
+    VersionInfo getEngineVersion();
 
-  abstract class DAGExecutionEvent<T extends DAGExecutionEventType> extends Event.BaseEvent<T>
-  {
-    protected DAGExecutionEvent(T eventType)
-    {
-      super(eventType);
-    }
+    StramAppContext getApplicationContext();
 
-    public static class HeartbeatExecutionEvent extends DAGExecutionEvent<DAGExecutionEventType>
-    {
-      private final StreamingContainerUmbilicalProtocol.ContainerHeartbeat heartbeat;
+    AppInfo.AppStats getApplicationStats();
 
-      public HeartbeatExecutionEvent(StreamingContainerUmbilicalProtocol.ContainerHeartbeat heartbeat)
-      {
-        super(HEARTBEAT_EVENT);
-        this.heartbeat = heartbeat;
-      }
+    Configuration getLaunchConfig();
 
-      public StreamingContainerUmbilicalProtocol.ContainerHeartbeat getHeartbeat()
-      {
-        return heartbeat;
-      }
-    }
+    DAG getDAG();
 
-    public static class StramExecutionEvent extends DAGExecutionEvent<DAGExecutionEventType>
-    {
-      private final StramEvent stramEvent;
+    String getOperatorName(int id);
 
-      public StramExecutionEvent(StramEvent stramEvent)
-      {
-        super(STRAM_EVENT);
-        this.stramEvent = stramEvent;
-      }
+    BatchedOperatorStats getPhysicalOperatorStats(int id);
 
-      public StramEvent getStramEvent()
-      {
-        return stramEvent;
-      }
-    }
+    List<LogicalOperatorInfo> getLogicalOperatorInfoList();
 
-    public static class CommitExecutionEvent extends DAGExecutionEvent<DAGExecutionEventType>
-    {
-      private final long commitWindow;
+    Queue<Pair<Long, Map<String, Object>>> getWindowMetrics(String operatorName);
 
-      public CommitExecutionEvent(long commitWindow)
-      {
-        super(COMMIT_EVENT);
-        this.commitWindow = commitWindow;
-      }
-
-      public long getCommitWindow()
-      {
-        return commitWindow;
-      }
-    }
+    long windowIdToMillis(long windowId);
   }
 }

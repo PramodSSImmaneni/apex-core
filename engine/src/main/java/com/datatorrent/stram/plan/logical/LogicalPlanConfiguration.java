@@ -85,12 +85,12 @@ import com.datatorrent.stram.plan.logical.LogicalPlan.OutputPortMeta;
 import com.datatorrent.stram.plan.logical.LogicalPlan.StreamMeta;
 import com.datatorrent.stram.util.ObjectMapperFactory;
 
-import static org.apache.apex.api.plugin.DAGSetupPlugin.DAGSetupEventType.POST_CONFIGURE_DAG;
-import static org.apache.apex.api.plugin.DAGSetupPlugin.DAGSetupEventType.POST_POPULATE_DAG;
-import static org.apache.apex.api.plugin.DAGSetupPlugin.DAGSetupEventType.POST_VALIDATE_DAG;
-import static org.apache.apex.api.plugin.DAGSetupPlugin.DAGSetupEventType.PRE_CONFIGURE_DAG;
-import static org.apache.apex.api.plugin.DAGSetupPlugin.DAGSetupEventType.PRE_POPULATE_DAG;
-import static org.apache.apex.api.plugin.DAGSetupPlugin.DAGSetupEventType.PRE_VALIDATE_DAG;
+import static org.apache.apex.api.plugin.DAGSetupEvent.Type.POST_CONFIGURE_DAG;
+import static org.apache.apex.api.plugin.DAGSetupEvent.Type.POST_POPULATE_DAG;
+import static org.apache.apex.api.plugin.DAGSetupEvent.Type.POST_VALIDATE_DAG;
+import static org.apache.apex.api.plugin.DAGSetupEvent.Type.PRE_CONFIGURE_DAG;
+import static org.apache.apex.api.plugin.DAGSetupEvent.Type.PRE_POPULATE_DAG;
+import static org.apache.apex.api.plugin.DAGSetupEvent.Type.PRE_VALIDATE_DAG;
 
 /**
  *

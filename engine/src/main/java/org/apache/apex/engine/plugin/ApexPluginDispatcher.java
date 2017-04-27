@@ -19,7 +19,6 @@
 package org.apache.apex.engine.plugin;
 
 import org.apache.apex.api.plugin.Event;
-import org.apache.apex.api.plugin.EventType;
 import org.apache.hadoop.service.Service;
 
 import com.datatorrent.api.DAG;
@@ -30,11 +29,11 @@ public interface ApexPluginDispatcher extends Service
   /**
    * This is internal event, which is not delivered to the plugins.
    */
-  EventType DAG_CHANGE = new EventType(){};
+  Event.Type DAG_CHANGE = new Event.Type(){};
 
-  class DAGChangeEvent extends Event.BaseEvent<EventType>
+  class DAGChangeEvent extends Event.BaseEvent<Event.Type>
   {
-    DAG dag;
+    final DAG dag;
 
     public DAGChangeEvent(DAG dag)
     {

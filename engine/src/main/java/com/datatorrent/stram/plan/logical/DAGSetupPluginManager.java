@@ -24,13 +24,14 @@ import java.util.List;
 
 import org.slf4j.Logger;
 
+import org.apache.apex.api.plugin.DAGSetupEvent;
 import org.apache.apex.api.plugin.DAGSetupPlugin;
-import org.apache.apex.api.plugin.Event;
-import org.apache.apex.api.plugin.EventType;
-import org.apache.apex.api.plugin.Plugin;
-import org.apache.apex.engine.plugin.PluginInfoMap;
+import org.apache.apex.api.plugin.Plugin.EventHandler;
 import org.apache.apex.engine.plugin.loaders.PropertyBasedPluginLocator;
 import org.apache.hadoop.conf.Configuration;
+
+import com.google.common.collect.HashBasedTable;
+import com.google.common.collect.Table;
 
 import com.datatorrent.api.Attribute;
 import com.datatorrent.api.DAG;
@@ -46,7 +47,7 @@ public class DAGSetupPluginManager
 
   public static final String DAGSETUP_PLUGINS_CONF_KEY = "apex.plugin.dag.setup";
 
-  private PluginInfoMap<DAGSetupPlugin> pluginInfoMap = new PluginInfoMap<>();
+  private final Table<DAGSetupEvent.Type, DAGSetupPlugin, EventHandler<DAGSetupEvent>> table = HashBasedTable.create();
 
   private void loadVisitors(Configuration conf)
   {
@@ -59,7 +60,7 @@ public class DAGSetupPluginManager
     this.plugins.addAll(locator.discoverPlugins(conf));
   }
 
-  private class DefaultDAGSetupPluginContext implements DAGSetupPlugin.DAGSetupPluginContext
+  private class DefaultDAGSetupPluginContext implements DAGSetupPlugin.Context<DAGSetupEvent>
   {
     private final DAG dag;
     private final Configuration conf;
@@ -73,9 +74,9 @@ public class DAGSetupPluginManager
     }
 
     @Override
-    public <T extends EventType, E extends Event<T>> void register(T type, Plugin.EventHandler<E> handler)
+    public void register(DAGSetupEvent.Type type, EventHandler<DAGSetupEvent> handler)
     {
-      pluginInfoMap.register(type, handler, plugin);
+      table.put(type, plugin, handler);
     }
 
     public DAG getDAG()
@@ -116,7 +117,7 @@ public class DAGSetupPluginManager
   public void setup(DAG dag)
   {
     for (DAGSetupPlugin plugin : plugins) {
-      DAGSetupPlugin.DAGSetupPluginContext context = new DefaultDAGSetupPluginContext(dag, conf, plugin);
+      DAGSetupPlugin.Context context = new DefaultDAGSetupPluginContext(dag, conf, plugin);
       plugin.setup(context);
     }
   }
@@ -128,9 +129,15 @@ public class DAGSetupPluginManager
     }
   }
 
-  public <T> void dispatch(Event e)
+  public void dispatch(DAGSetupEvent event)
   {
-    pluginInfoMap.dispatch(e);
+    for (EventHandler<DAGSetupEvent> handler : table.row(event.getType()).values()) {
+      try {
+        handler.handle(event);
+      } catch (RuntimeException e) {
+        LOG.warn("Event {} caused an exception in {} handler", event, handler, e);
+      }
+    }
   }
 
   public static synchronized DAGSetupPluginManager getInstance(Configuration conf)

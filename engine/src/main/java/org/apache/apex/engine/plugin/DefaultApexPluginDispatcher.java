@@ -29,8 +29,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.apex.api.plugin.Event;
-import org.apache.apex.api.plugin.EventType;
-import org.apache.apex.engine.api.plugin.DAGExecutionPlugin;
+import org.apache.apex.api.plugin.Plugin.EventHandler;
+import org.apache.apex.engine.api.plugin.DAGExecutionEvent;
 import org.apache.apex.engine.api.plugin.PluginLocator;
 import org.apache.hadoop.conf.Configuration;
 
@@ -57,7 +57,7 @@ public class DefaultApexPluginDispatcher extends AbstractApexPluginDispatcher
   }
 
   @Override
-  protected void dispatchExecutionEvent(DAGExecutionPlugin.DAGExecutionEvent event)
+  protected void dispatchExecutionEvent(DAGExecutionEvent event)
   {
     if (executorService != null) {
       executorService.submit(new ProcessEventTask<>(event));
@@ -99,7 +99,7 @@ public class DefaultApexPluginDispatcher extends AbstractApexPluginDispatcher
     executorService = null;
   }
 
-  private class ProcessEventTask<T extends EventType> implements Runnable
+  private class ProcessEventTask<T extends DAGExecutionEvent.Type> implements Runnable
   {
     private final Event<T> event;
 
@@ -111,7 +111,15 @@ public class DefaultApexPluginDispatcher extends AbstractApexPluginDispatcher
     @Override
     public void run()
     {
-      pluginInfoMap.dispatch(event);
+      synchronized (table) {
+        for (EventHandler handler : table.row(event.getType()).values()) {
+          try {
+            handler.handle(event);
+          } catch (RuntimeException e) {
+            LOG.warn("Event {} caused exception in handler {}", event, handler, e);
+          }
+        }
+      }
     }
   }
 }

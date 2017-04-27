@@ -65,7 +65,7 @@ import org.codehaus.jettison.json.JSONObject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.apache.apex.engine.api.plugin.DAGExecutionPlugin;
+import org.apache.apex.engine.api.plugin.DAGExecutionEvent;
 import org.apache.apex.engine.plugin.ApexPluginDispatcher;
 import org.apache.apex.engine.plugin.NoOpApexPluginDispatcher;
 import org.apache.apex.engine.util.CascadeStorageAgent;
@@ -814,7 +814,7 @@ public class StreamingContainerManager implements PlanContext
 
     committedWindowId = updateCheckpoints(waitForRecovery);
     if (lastCommittedWindowId != committedWindowId) {
-      apexPluginDispatcher.dispatch(new DAGExecutionPlugin.DAGExecutionEvent.CommitExecutionEvent(committedWindowId));
+      apexPluginDispatcher.dispatch(new DAGExecutionEvent.CommitExecutionEvent(committedWindowId));
       lastCommittedWindowId = committedWindowId;
     }
     calculateEndWindowStats();
@@ -1813,7 +1813,7 @@ public class StreamingContainerManager implements PlanContext
     rsp.stackTraceRequired = sca.stackTraceRequested;
     sca.stackTraceRequested = false;
 
-    apexPluginDispatcher.dispatch(new DAGExecutionPlugin.DAGExecutionEvent.HeartbeatExecutionEvent(heartbeat));
+    apexPluginDispatcher.dispatch(new DAGExecutionEvent.HeartbeatExecutionEvent(heartbeat));
     return rsp;
   }
 
@@ -2445,7 +2445,7 @@ public class StreamingContainerManager implements PlanContext
   @Override
   public void recordEventAsync(StramEvent ev)
   {
-    apexPluginDispatcher.dispatch(new DAGExecutionPlugin.DAGExecutionEvent.StramExecutionEvent(ev));
+    apexPluginDispatcher.dispatch(new DAGExecutionEvent.StramExecutionEvent(ev));
     if (eventBus != null) {
       eventBus.publishAsync(ev);
     }

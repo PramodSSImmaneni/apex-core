@@ -27,8 +27,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import org.apache.apex.api.plugin.Event;
-import org.apache.apex.api.plugin.EventType;
 import org.apache.apex.api.plugin.Plugin;
+import org.apache.apex.api.plugin.Plugin.EventHandler;
+import org.apache.apex.engine.api.plugin.DAGExecutionEvent;
 import org.apache.apex.engine.api.plugin.DAGExecutionPlugin;
 import org.apache.apex.engine.api.plugin.PluginLocator;
 import org.apache.commons.lang3.SerializationUtils;
@@ -39,7 +40,9 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.service.AbstractService;
 import org.apache.hadoop.yarn.conf.YarnConfiguration;
 
+import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Table;
 
 import com.datatorrent.api.DAG;
 import com.datatorrent.stram.StramAppContext;
@@ -61,7 +64,7 @@ public abstract class AbstractApexPluginDispatcher extends AbstractService imple
   private final AppInfo.AppStats stats;
   protected Configuration launchConfig;
   protected FileContext fileContext;
-  protected final PluginInfoMap<DAGExecutionPlugin> pluginInfoMap = new PluginInfoMap<>();
+  protected final Table<DAGExecutionEvent.Type, DAGExecutionPlugin, EventHandler<DAGExecutionEvent>> table = HashBasedTable.create();
   private volatile DAG clonedDAG = null;
 
   public AbstractApexPluginDispatcher(PluginLocator locator, StramAppContext context, StreamingContainerManager dmgr, AppInfo.AppStats stats)
@@ -122,16 +125,18 @@ public abstract class AbstractApexPluginDispatcher extends AbstractService imple
     super.serviceStop();
   }
 
-  public <T extends EventType, E extends Event<T>> void register(T eventType, Plugin.EventHandler<E> handler, DAGExecutionPlugin owner)
+  public void register(DAGExecutionEvent.Type eventType, Plugin.EventHandler<DAGExecutionEvent> handler, DAGExecutionPlugin owner)
   {
-    pluginInfoMap.register(eventType, handler, owner);
+    synchronized (table) {
+      table.put(eventType, owner, handler);
+    }
   }
 
   /**
    * A wrapper PluginManager to track registration from a plugin. with this plugin
    * don't need to pass explicit owner argument during registration.
    */
-  private class PluginManagerImpl extends AbstractDAGExecutionPluginContext
+  private class PluginManagerImpl extends AbstractDAGExecutionPluginContext<DAGExecutionEvent>
   {
     private final DAGExecutionPlugin owner;
 
@@ -142,7 +147,7 @@ public abstract class AbstractApexPluginDispatcher extends AbstractService imple
     }
 
     @Override
-    public <T extends EventType, E extends Event<T>> void register(T type, Plugin.EventHandler<E> handler)
+    public void register(DAGExecutionEvent.Type type, EventHandler<DAGExecutionEvent> handler)
     {
       AbstractApexPluginDispatcher.this.register(type, handler, owner);
     }
@@ -157,18 +162,17 @@ public abstract class AbstractApexPluginDispatcher extends AbstractService imple
   /**
    * Dispatch events to plugins.
    * @param event The dag execution event
-   * @param <T>
    */
-  protected abstract void dispatchExecutionEvent(DAGExecutionPlugin.DAGExecutionEvent event);
+  protected abstract void dispatchExecutionEvent(DAGExecutionEvent event);
 
   @Override
   public void dispatch(Event event)
   {
     if (!plugins.isEmpty()) {
-      if (event.getEventType() == ApexPluginDispatcher.DAG_CHANGE) {
+      if (event.getType() == ApexPluginDispatcher.DAG_CHANGE) {
         clonedDAG = SerializationUtils.clone(((DAGChangeEvent)event).dag);
-      } else if (event instanceof DAGExecutionPlugin.DAGExecutionEvent) {
-        dispatchExecutionEvent((DAGExecutionPlugin.DAGExecutionEvent)event);
+      } else if (event instanceof DAGExecutionEvent) {
+        dispatchExecutionEvent((DAGExecutionEvent)event);
       }
     }
   }
