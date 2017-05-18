@@ -497,6 +497,10 @@ public class Server extends AbstractServer
   @Override
   public void handleException(Exception cce, EventLoop el)
   {
+    if (latch != null) {
+      latch.countDown();
+      latch = null;
+    }
     if (cce instanceof RuntimeException) {
       throw (RuntimeException)cce;
     }
