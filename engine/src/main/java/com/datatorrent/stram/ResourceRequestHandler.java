@@ -334,8 +334,13 @@ public class ResourceRequestHandler
         LOG.info("Node {} memAvailable {} vCoresAvailable {}", nodeEntry.getKey(), memAvailable, vCoresAvailable);
         if (memAvailable >= aggrMemory && vCoresAvailable >= vCores && !antiHosts.contains(nodeEntry.getKey()) && !antiPreferredHosts.contains(nodeEntry.getKey())) {
           host = nodeEntry.getKey();
+          LOG.info("Found host entry {}", host);
           grpObj.setHost(host);
-          nodeLocalMapping.put(nodeLocalSet, host);
+          if (!nodeLocalSet.isEmpty()) {
+            nodeLocalMapping.put(nodeLocalSet, host);
+          } else {
+            LOG.info("Empty node local set");
+          }
 
           return host;
         }
