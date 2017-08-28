@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.builder.ToStringBuilder;
 import org.apache.commons.lang.builder.ToStringStyle;
 
@@ -488,6 +489,14 @@ public class PTOperator implements java.io.Serializable
       this.operatorSet = operatorSet;
     }
 
+    @Override
+    public String toString()
+    {
+      return "HostOperatorSet{" +
+          "host='" + host + '\'' +
+          ", operatorSet=" + StringUtils.join(operatorSet, ",") +
+          '}';
+    }
   }
 
   /**

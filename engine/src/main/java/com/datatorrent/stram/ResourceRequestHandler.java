@@ -326,10 +326,12 @@ public class ResourceRequestHandler
    */
   public String assignHost(String host, List<String> antiHosts, List<String> antiPreferredHosts, HostOperatorSet grpObj, Set<PTOperator> nodeLocalSet, int aggrMemory, int vCores)
   {
+    LOG.info("Assign host: anti hosts {}, anti preferred hosts {} aggrMemory {} vCores {} groupObj {}", antiHosts, antiPreferredHosts, aggrMemory, vCores, grpObj);
     for (Map.Entry<String, NodeReport> nodeEntry : nodeReportMap.entrySet()) {
       if (nodeEntry.getValue().getNodeState() == NodeState.RUNNING) {
         int memAvailable = nodeEntry.getValue().getCapability().getMemory() - nodeEntry.getValue().getUsed().getMemory();
         int vCoresAvailable = nodeEntry.getValue().getCapability().getVirtualCores() - nodeEntry.getValue().getUsed().getVirtualCores();
+        LOG.info("Node {} memAvailable {} vCoresAvailable {}", nodeEntry.getKey(), memAvailable, vCoresAvailable);
         if (memAvailable >= aggrMemory && vCoresAvailable >= vCores && !antiHosts.contains(nodeEntry.getKey()) && !antiPreferredHosts.contains(nodeEntry.getKey())) {
           host = nodeEntry.getKey();
           grpObj.setHost(host);
