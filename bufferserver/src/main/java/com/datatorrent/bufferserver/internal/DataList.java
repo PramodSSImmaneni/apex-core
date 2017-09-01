@@ -198,7 +198,7 @@ public class DataList
             first = temp;
             first.prev = null;
           }
-          first.purge(windowId);
+          //first.purge(windowId);
           break;
         }
         temp.discard(false);
