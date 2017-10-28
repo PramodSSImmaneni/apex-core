@@ -1169,6 +1169,7 @@ public class StreamingAppMasterService extends CompositeService
     if (containerRequests.size() > 0) {
       LOG.debug("Asking RM for containers: {}", containerRequests);
       for (ContainerRequest cr : containerRequests) {
+        LOG.info("CR {} nodes {}", cr, cr.getNodes());
         amRmClient.addContainerRequest(cr);
       }
     }
